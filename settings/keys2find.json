@@ -1,0 +1,21 @@
+{
+    "Ритмы": {
+        "Наджелудочковый ритм | S": " ({base_rhythm} && (sinus) && (rhythm || tachy || brady) && !(sinus_arr || pacing)) || ({base_rhythm} && (atrial) && (rhythm || tachy) && !(fib || flutter)) || ({base_rhythm} && (AV || nodal_AV) && (rhythm || tachy))",
+        "Ф(Т)П | AF ": "{base_rhythm} && (atrial) && (fib || flutter)",
+        "Желудочковый ритм | V": "{base_rhythm} && (vent) && (rhythm || tachy)",
+        "Ф(Т)Ж | VF": "{base_rhythm} && (vent) && (fib || flutter)"
+    },
+    "Эктопические комплексы": {
+        "НЖЭ | SP": " ({ectopic} && (atrial) && (premature || escape)) || ({ectopic} && (nodal_AV) && (premature || escape))",
+        "ЖЭ | VP": "{ectopic} && (vent) && (premature || escape)",
+        "Алоритмии | Al": " ({ectopic} && (bi)) || ({ectopic} && (tri)) || ({ectopic} && (quadri))"
+    },
+    "Узловое проведение": {
+        "Пауза без блокады | Pause": " ({ectopic} && (premature && blocked)) || ({nodal_conduction} && (compensatory)) || ({nodal_conduction} && (pause_on_rhythm))",
+        "Синусовая пауза | SinusPause": " ({nodal_conduction} && (SA_block && degree_2)) || ({nodal_conduction} && (sin_arrest)) || ({nodal_conduction} && (SA_block && degree_3))",
+        "Нерегулярное проведение | Var": "{nodal_conduction} && (varying)",
+        "АВ-блокада | AV-block": "{nodal_conduction} && (AV_block)",
+        "АВ-диссоциация | AV-dis": "{nodal_conduction} && (AV_dis)",
+        "Бинодальная блокада | Bi-block": "{nodal_conduction} && (binodal_block)"
+    }
+}
