@@ -96,7 +96,7 @@ function lineup_events(events::Vector{Dict{String, Any}})::Dict{String, BitVecto
 end
 
 # чтение частичной разметки
-fullpath(rootdir::String, fn::String, ext::String) = joinpath(rootdir, join((fn, ext), '.'))
+fullpath(rootdir::AbstractString, fn::AbstractString, ext::AbstractString) = joinpath(rootdir, join((fn, ext), '.'))
 
 function read_markups(markpath, binpath, ref_author, test_author)
     allmkps = readdir(markpath) .|> splitext .|> first |> unique

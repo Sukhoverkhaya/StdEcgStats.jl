@@ -11,11 +11,3 @@ PackageCompiler.create_app(pwd(), "StdEcgStats";
     incremental=true,
     precompile_execution_file=["test/runtests.jl"])
 '
-
-julia --project=@. --startup-file=no -e '
-
-    src = joinpath(pwd(), "settings")
-    dst = joinpath(pwd(), "StdEcgStats", "bin", "settings")
-    cp(src, dst)
-    
-'
