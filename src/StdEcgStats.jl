@@ -10,7 +10,7 @@ using Dates
 using CSV
 import TimeSamplings: seg_outerjoin_indexpairs
 
-using RelocatableFolders
+using RelocatableFolders, ArgParse
 
 include("CompareEvents.jl")
 using .CompareEvents
@@ -48,12 +48,21 @@ export total_gross
 ### для прогона по базе STDECGDB
 const DB_PATH = "//incart.local/fs/guest/skv/STDECGDB"
 const SETTINGS_PATH = @path joinpath(pwd(), "settings")
+const STATS_PATH = joinpath(DB_PATH, "stats"); mkpath(STATS_PATH)
 
 ###
 ## Из функций CompareMarkups, по идее, можно собирать кастомные сценарии прогона статистик
 # но тут сделаю функцию под прогон по всем статитстикам, т.к. скорее всего это будет самый частый сценарий
 
-# main
+function formatted_now()
+    datetime = now()
+    date, time = Date(datetime), Time(datetime)
+    return "$(date)T$(hour(time))-$(minute(time))-$(second(time))"
+end
+
+"""
+Сравнение разметок двух авторов
+"""
 function compare_markups(
     binpath::AbstractString,
     markpath::AbstractString,
@@ -105,9 +114,7 @@ function compare_markups(
     end
 
     # сохранение
-    datetime = now()
-    date, time = Date(datetime), Time(datetime)
-    targetpath = joinpath(outpath, "$(test_author)_VS_$(ref_author)_$(date)T$(hour(time))-$(minute(time))-$(second(time))")
+    targetpath = joinpath(outpath, "$(test_author)_VS_$(ref_author)_$(formatted_now())")
     mkpath(targetpath)
 
     # TODO: надо бы вынести сохранение в функции рассчета статистик, по примеру CompareEvents....
@@ -137,18 +144,112 @@ function compare_markups(
     end
 end
 
+"""
+Сравнение таблиц статистики между двумя прогонами
+"""
+function compare_stata_tables(old_tables::AbstractString, new_tables::AbstractString, outpath::AbstractString)
+
+    dst = joinpath(outpath, "comparison_$(formatted_now())")
+    mkpath(dst)
+
+    write(open(joinpath(dst, "readme.txt"), "w"), join(pairs((;old_tables, new_tables)), '\n'))
+
+    for table in ("qrs_detector", "qrs_forms", "durations_err")
+        delta = gross_delta(joinpath.((old_tables, new_tables), table*".csv")..., 1)[:,2:end]
+
+        CSV.write(joinpath(dst, "DELTA_$table.csv"), delta)
+    end
+
+    for table_type in ("По записям", "По сегментам")
+        mkpath(joinpath(dst, table_type))
+        for gross_type in ("GROSS_Ритмы", "GROSS_Эктопические комплексы", "GROSS_Узловое проведение")
+            grosspath = joinpath("Ритмы и аритмии", table_type, gross_type*".csv")
+            delta = gross_delta(joinpath.((old_tables, new_tables), grosspath)...)
+
+            table_name = split(gross_type, "GROSS")[end]
+            CSV.write(joinpath(dst, table_type, "DELTA$table_name.csv"), delta)
+        end
+    end
+end
+
+function gross_delta(old_gross::DataFrame, new_gross::DataFrame, n_last_rows::Int = -1)
+
+    (size(old_gross) != size(new_gross)) && error("Tables to comparison must be the same length")
+
+    nrows, _ = size(new_gross)
+    rows_rng = (n_last_rows == -1) ? (1:nrows) : (nrows-n_last_rows+1:nrows)
+
+    oldM = Matrix(old_gross[rows_rng, 2:end])
+    newM = Matrix(new_gross[rows_rng, 2:end])
+    deltaM = newM - oldM
+
+    delta_df = DataFrame(names(new_gross)[2:end] .=> eachcol(deltaM))
+    insertcols!(delta_df, 1, first(names(new_gross)) => new_gross[rows_rng,1])
+
+    return delta_df
+end
+
+function gross_delta(old_path::String, new_path::String, n_last_rows::Int = -1)
+    old_gross = CSV.read(old_path, DataFrame)
+    new_gross = CSV.read(new_path, DataFrame)
+
+    return gross_delta(old_gross, new_gross, n_last_rows)
+end
+
+######
+function compare_markups_params()
+    binpath = joinpath(DB_PATH, "bin")
+    markpath = joinpath(DB_PATH, "mkp")
+    outpath = STATS_PATH
+    settings = JSON3.read(joinpath(SETTINGS_PATH, "settings.json"), Dict{String, Any})
+    ref_author, test_author = settings["ref_author"], settings["test_author"]
+    keys2find = JSON3.read(joinpath(SETTINGS_PATH, settings["keys_to_search"]), OrderedDict{String, OrderedDict{String, String}})
+
+    return binpath, markpath, outpath, ref_author, test_author, keys2find
+end
+
+function compare_stata_tables_params()
+    settings = JSON3.read(joinpath(SETTINGS_PATH, "settings.json"), Dict{String, Any})
+    outpath = STATS_PATH
+    old_tables, new_tables = joinpath.(STATS_PATH, (settings["old_tables"], settings["new_tables"]))
+
+    return old_tables, new_tables, outpath
+end
+
+#####
+function parse_commandline()
+    s = ArgParseSettings()
+
+    @add_arg_table! s begin
+    "calc"
+        help = "Calc stata (comapare markups of two authors)"
+        action = :command
+    "compare"
+        help = "Compare stata tables"
+        action = :command
+    end
+
+    args = ArgParse.parse_args_unhandled(Base.ARGS, s) |> ArgParse.convert_to_symbols
+
+    return args
+end
+
+function main()
+    parsed_args = parse_commandline()
+    @info "Julia started with args: $parsed_args"
+
+    if parsed_args[:_COMMAND_] === :calc
+        compare_markups(compare_markups_params()...)
+    elseif parsed_args[:_COMMAND_] === :compare
+        compare_stata_tables(compare_stata_tables_params()...)
+    end
+end
+
 # compilation
 function julia_main()::Cint
     println("julia_main")
     try
-        binpath = joinpath(DB_PATH, "bin")
-        markpath = joinpath(DB_PATH, "mkp")
-        outpath = joinpath(DB_PATH, "stats"); mkpath(outpath)
-        settings = JSON3.read(joinpath(SETTINGS_PATH, "settings.json"), Dict{String, Any})
-        ref_author, test_author = settings["ref_author"], settings["test_author"]
-        keys2find = JSON3.read(joinpath(SETTINGS_PATH, settings["keys_to_search"]), OrderedDict{String, OrderedDict{String, String}})
-
-        compare_markups(binpath, markpath, outpath, ref_author, test_author, keys2find)
+        main()
     catch
         Base.invokelatest(Base.display_error, Base.catch_stack())
         return 1

@@ -1,5 +1,8 @@
 {
     "ref_author" : "skv",
     "test_author": "box51",
-    "keys_to_search": "keys2find.json"
+    "keys_to_search": "keys2find.json",
+
+    "old_tables": "box51_VS_skv_2024-12-09T14-26-18",
+    "new_tables": "box51_VS_skv_2024-12-09T15-14-15"
 }
