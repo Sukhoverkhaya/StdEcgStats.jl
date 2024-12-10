@@ -1,5 +1,5 @@
-# include("../src/StdEcgStats.jl")
-# using .StdEcgStats
+include("../src/StdEcgStats.jl")
+using .StdEcgStats
 
 # using OrderedCollections, JSON3
 

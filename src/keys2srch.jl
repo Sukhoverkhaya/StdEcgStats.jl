@@ -28,9 +28,9 @@ function isin(srch_expr::String, dst::String)
     # expr = join(elements)
 
     # # # разрешаем выражение с помощью встроенных методов
-    # return eval(Meta.parse(expr)) # TODO: eval непозволительно долго работает... надо сделать свой калькулятор бинарных операций
+    # return eval(Meta.parse(expr)) # TODO: eval непозволительно долго работает... надо сделать свой калькулятор логических выражений
 
-    return eval_logical_expression(elements)
+    return eval_logical_expression(elements) # используем свой калькулятор логических выражений
 end
 
 isin_mask(x::String, set::Dict{String, BitVector}, masklen::Int64) = begin
